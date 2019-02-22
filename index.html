@@ -1,0 +1,82 @@
+<html>
+<body>
+    <textarea id="printContent">
+DIRECTION 1
+REFERENCE 0,15
+CLS
+BARCODE 10,0,"39S",85,0,0,2,4,"01322502"
+TEXT 10,90,"1",0,1,1,"01322502 2018-06-25"
+TEXT 10,110,"2",0,1,1,"Mr. John Doe Dinigrat"
+TEXT 10,130,"3",0,1,1,"Serum"
+TEXT 10,155,"1",0,1,1,"ALB,AST,ALT,CRET,GDS,UR"
+TEXT 10,170,"1",0,1,1,"GLU,CHOL"
+TEXT 380,20,"5",90,1,1,"132E"
+TEXT 325,5,"1",90,1,1,"BIOLIS50,INTEGRA"
+TEXT 305,5,"1",90,1,1,"K. Bedah"
+PRINT 1
+    </textarea>
+    <input type="submit" onclick="connectAndPrint()" value="Print"/>
+    <button onclick="connectPrinter()">Connect</button>
+    <P>Type text into box and click on submit button.
+    <script>
+    var device;
+
+    function connectPrinter() {
+      navigator.usb.requestDevice({ filters: [{ vendorId: 8137, productId: 8214 }, { vendorId: 1256 }] })
+            .then(selectedDevice => {
+                device = selectedDevice;
+                console.log("Selected device: ", device.configuration);
+                return setup(device);
+            })
+            .catch(error => { console.log("requestDevice() Error:", error); })
+    }
+
+    function setup(device) {
+        return device.open()
+        .then(() => device.selectConfiguration(1))
+        .then(() => device.claimInterface(device.configuration.interfaces[0].interfaceNumber))
+    }
+
+    function print() {
+        var string = document.getElementById("printContent").value + "\n";
+        var encoder = new TextEncoder();
+        var data = encoder.encode(string);
+        console.log("data.length: ", data.length);
+        device.transferOut(device.configuration.interfaces[0].alternate.endpoints[0].endpointNumber, data)
+        .catch(error => { console.warn("transferOut Error: ", error); device = null;})
+    }
+
+    function connectAndPrint() {
+        console.log("Current device: ", device);
+        if (device == null) {
+            navigator.usb.requestDevice({ filters: [{ vendorId: 8137, productId: 8214 }, { vendorId: 1256 }] })
+            .then(selectedDevice => {
+                device = selectedDevice;
+                console.log("Selected device: ", device.configuration);
+                return setup(device);
+            })
+            .then(() => print())
+            .catch(error => { console.log("requestDevice() Error:", error); })
+        }
+        else
+        {
+            print();
+        }
+    }
+
+    navigator.usb.getDevices()
+    .then(devices => {
+      console.log('devices.length:', devices.length);
+      devices = devices.filter(item => { return item.productId == 8214 });
+      console.log('devices.length:', devices.length);
+        if (devices.length > 0) {
+          device = devices[0];
+          return setup(device);
+        }
+        console.log("Paired device: ", device);
+    })
+    .catch(error => { "getDevices() Error:", console.log(error); });
+
+    </script>
+</body>
+</html>
